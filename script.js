@@ -1,22 +1,12 @@
-// CONFIGURATION: Type your exact GitHub path details below
-const GITHUB_USERNAME = "Metahuman52";
-const REPO_NAME = "minddump";
-const FILE_PATH = "data.json"; 
+// CONFIGURATION: Paste your unique Pipedream webhook endpoint URL inside the quotes below
+const PIPEDREAM_SYNC_URL = "https://pipedream.net";
 
-// API URL used for changing repository contents securely
-const API_URL = `https://github.com{GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}`;
+// Global data feed pointer matching your personal repository details
+const READ_URL = "https://githubusercontent.com";
 
 const searchBar = document.getElementById("searchBar");
 const boardGrid = document.getElementById("boardGrid");
 const tagBar = document.getElementById("tagBar");
-
-const togglePanelBtn = document.getElementById("togglePanelBtn");
-const creationPanel = document.getElementById("creationPanel");
-
-const addNoteBtn = document.getElementById("addNoteBtn");
-const titleInput = document.getElementById("noteTitle");
-const tagInput = document.getElementById("noteTag");
-const contentInput = document.getElementById("noteContent");
 
 let currentSelectedTag = "ALL";
 let savedNotes = [];
