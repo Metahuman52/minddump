@@ -1,0 +1,254 @@
+/* Base Reset and Layout Theme */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: #0b0f12;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Nav layout to group the Search Input alongside the Trigger Button */
+.top-nav {
+    margin-bottom: 24px;
+    width: 100%;
+    display: flex;
+    gap: 12px;
+}
+
+.search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background-color: #131921;
+    border: 1px solid #232d38;
+    border-radius: 6px;
+    padding: 0 16px;
+    flex: 1;
+}
+
+.search-icon {
+    font-size: 0.9rem;
+    color: #718096;
+    margin-right: 12px;
+}
+
+#searchBar {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #fff;
+    padding: 14px 0;
+    font-size: 0.95rem;
+    outline: none;
+}
+
+#searchBar::placeholder {
+    color: #4a5568;
+}
+
+/* Master Menu Action Buttons Styling */
+.action-trigger-btn {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 0 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+}
+
+.action-trigger-btn:hover {
+    background-color: #334155;
+}
+
+/* Creation Input Panel Layout */
+.creation-panel {
+    background-color: #131921;
+    border: 1px solid #232d38;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.input-row {
+    display: flex;
+    gap: 12px;
+}
+
+.input-row input {
+    background-color: #1a202c;
+    border: 1px solid #2d3748;
+    border-radius: 4px;
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+#noteTitle { flex: 2; }
+#noteTag { flex: 1; }
+
+.creation-panel textarea {
+    background-color: #1a202c;
+    border: 1px solid #2d3748;
+    border-radius: 4px;
+    color: #fff;
+    padding: 12px 14px;
+    font-size: 0.9rem;
+    min-height: 80px;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+}
+
+#addNoteBtn {
+    background-color: #fff;
+    color: #0b0f12;
+    border: none;
+    border-radius: 4px;
+    padding: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    align-self: flex-end;
+    width: 120px;
+}
+
+#addNoteBtn:hover {
+    opacity: 0.9;
+}
+
+/* Core Column-Based Masonry Grid Layout */
+.masonry-board {
+    column-count: 3;
+    column-gap: 16px;
+    width: 100%;
+}
+
+/* Note Card Structure styling */
+.card {
+    background-color: #131921;
+    border: 1px solid #232d38;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: inline-block;
+    width: 100%;
+}
+
+.card.pinned {
+    border-left: 3px solid #d97706;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: #718096;
+    margin-bottom: 10px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Card Delete Controls */
+.delete-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    opacity: 0.4;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.card:hover .delete-btn {
+    opacity: 1;
+}
+
+.delete-btn:hover {
+    transform: scale(1.2);
+}
+
+.status { color: #d97706; font-weight: bold; }
+.tag-label { color: #38bdf8; font-weight: bold; }
+
+h3 {
+    font-size: 1.05rem;
+    margin-bottom: 6px;
+    color: #fff;
+}
+
+.card-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #38bdf8;
+    background-color: #1a202c;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #cbd5e1;
+}
+
+/* Utility Hidden Properties (Crucial for state control) */
+.creation-panel.hidden, .card.hidden {
+    display: none !important;
+}
+
+/* Responsive Media Controls */
+@media (max-width: 1024px) { .masonry-board { column-count: 2; } }
+@media (max-width: 600px) { 
+    .top-nav { flex-direction: column; }
+    .masonry-board { column-count: 1; }
+    .input-row { flex-direction: column; }
+    #addNoteBtn { width: 100%; }
+}
+
+/* Dynamic Tag Navigation Filter Bar */
+.tag-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.tag-btn {
+    background-color: #1a202c;
+    border: 1px solid #2d3748;
+    color: #a0aec0;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.tag-btn.active, .tag-btn:hover {
+    background-color: #2d3748;
+    color: #fff;
+    border-color: #4a5568;
+}
