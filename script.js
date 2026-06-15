@@ -1,6 +1,9 @@
-// CONFIGURATION: Paste your unique credentials from your jsonbin dashboard profiles
-const API_KEY = "$2a$10$gdF5GL/vXNb5KkIq2.jeaegny6qFLHAZI8ukKyjkgQ2XqjCxQE51u";
-const BIN_ID = "6a2f862dda38895dfec18a66";
+// CONFIGURATION: Type your exact GitHub path strings below
+const GITHUB_USERNAME = "Metahuman52";
+const REPO_NAME = "minddump";
+
+// Automatically configures the global raw data pipeline link
+const DATA_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/data.json`;
 
 const searchBar = document.getElementById("searchBar");
 const boardGrid = document.getElementById("boardGrid");
@@ -17,50 +20,26 @@ const contentInput = document.getElementById("noteContent");
 let currentSelectedTag = "ALL";
 let savedNotes = [];
 
-// Feature 1: Push local notes snapshot to online cloud bucket storage securely using Master Key
-async function pushToCloud() {
-    try {
-        const response = await fetch(`https://jsonbin.io{BIN_ID}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "X-Master-Key": API_KEY  // Authorizes your device to write to your private bin
-            },
-            body: JSON.stringify({ notes: savedNotes })
-        });
-        
-        if (!response.ok) {
-            console.error("Cloud upload rejected by server status:", response.status);
-        }
-    } catch (err) {
-        console.error("Cloud upload connection failure:", err);
-    }
-}
-
-// Feature 2: Pull cloud updates down onto device securely using Master Key
+// Feature 1: Pull centralized data from your GitHub source file
 async function pullFromCloud() {
-    boardGrid.innerHTML = "<p style='color: #718096; padding: 20px;'>Syncing across devices...</p>";
+    boardGrid.innerHTML = "<p style='color: #718096; padding: 20px;'>Streaming cards data...</p>";
     try {
-        const res = await fetch(`https://jsonbin.io{BIN_ID}/latest`, {
-            headers: { 
-                "X-Master-Key": API_KEY  // Authorizes your device to read your private bin
-            }
-        });
-        const data = await res.json();
-        
-        // JSONBin wraps payloads inside a '.record' wrapper block
-        if (data.record && data.record.notes) {
-            savedNotes = data.record.notes;
+        // Cache busting URL parameters bypass browser proxy delay freezes
+        const res = await fetch(`${DATA_URL}?t=${Date.now()}`);
+        if (res.ok) {
+            savedNotes = await res.json();
             localStorage.setItem("masonry_dashboard_notes", JSON.stringify(savedNotes));
+        } else {
+            throw new Error("Server response fault");
         }
     } catch (err) {
-        console.error("Cloud download fault, falling back to local file dataset:", err);
+        console.warn("Falling back to local storage engine fallback cache:", err);
         savedNotes = JSON.parse(localStorage.getItem("masonry_dashboard_notes")) || [];
     }
     loadDashboardContent();
 }
 
-// Feature 3: Construct cards array visually onto screen canvas
+// Feature 2: Construct cards visually onto canvas screen
 function loadDashboardContent() {
     boardGrid.innerHTML = "";
     
@@ -90,7 +69,7 @@ function loadDashboardContent() {
     filterNotes();
 }
 
-// Feature 4: Parse tags array to build the top navigation pill filter row
+// Feature 3: Generate tag pills navigations
 function renderTagButtons() {
     const uniqueTags = new Set(["ALL"]);
     savedNotes.forEach(note => {
@@ -115,7 +94,7 @@ function renderTagButtons() {
     });
 }
 
-// Feature 5: Front-end text filtering algorithm
+// Feature 4: Compound sorting logic search algorithms
 function filterNotes() {
     const query = searchBar.value.toLowerCase();
     const cards = boardGrid.getElementsByClassName("card");
@@ -138,7 +117,7 @@ function filterNotes() {
 
 searchBar.addEventListener("input", filterNotes);
 
-// Feature 6: Toggle creation tray drop layout actions
+// Feature 5: Toggle UI drop layout panel
 togglePanelBtn.addEventListener("click", () => {
     creationPanel.classList.toggle("hidden");
     if (creationPanel.classList.contains("hidden")) {
@@ -149,7 +128,7 @@ togglePanelBtn.addEventListener("click", () => {
     }
 });
 
-// Feature 7: Add notes and trigger background sync pipeline tasks
+// Feature 6: Add card item to array and download a copy
 addNoteBtn.addEventListener("click", () => {
     const titleText = titleInput.value.trim();
     let tagText = tagInput.value.trim();
@@ -183,13 +162,13 @@ addNoteBtn.addEventListener("click", () => {
     togglePanelBtn.textContent = "+ Create Note";
 
     loadDashboardContent();
-    pushToCloud(); 
+    triggerFileDownload();
 });
 
-// Feature 8: Delete notes cleanly across local layout cache and cloud indexes
+// Feature 7: Delete card node and call tracking layout update functions
 boardGrid.addEventListener("click", (e) => {
     if (e.target.classList.contains("delete-btn")) {
-        if (confirm("Delete this card across all cloud devices?")) {
+        if (confirm("Delete this card cross platform?")) {
             const cardNode = e.target.closest(".card");
             const itemId = parseInt(cardNode.getAttribute("data-id"));
 
@@ -202,10 +181,21 @@ boardGrid.addEventListener("click", (e) => {
             }
 
             loadDashboardContent();
-            pushToCloud();
+            triggerFileDownload();
         }
     }
 });
 
-// Fire up initialization on boot sweep scanning cloud arrays
+// Feature 8: Automatic Backup Exporter
+function triggerFileDownload() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedNotes, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", "data.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+}
+
+// Bootstrap Initialization
 pullFromCloud();
