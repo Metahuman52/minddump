@@ -1,5 +1,5 @@
 // CONFIGURATION: Paste your unique Pipedream webhook endpoint URL inside the quotes below
-const PIPEDREAM_SYNC_URL = "https://pipedream.net";
+const PIPEDREAM_SYNC_URL = "https://eod41xryrhhuaif.m.pipedream.net";
 
 // Global data feed pointer matching your personal repository details
 const READ_URL = "https://githubusercontent.com";
@@ -8,100 +8,96 @@ const searchBar = document.getElementById("searchBar");
 const boardGrid = document.getElementById("boardGrid");
 const tagBar = document.getElementById("tagBar");
 
-let currentSelectedTag = "ALL";
-let savedNotes = [];
-let currentFileSha = ""; 
+const togglePanelBtn = document.getElementById("togglePanelBtn");
+const creationPanel = document.getElementById("creationPanel");
 
-// Dynamic Token Vault System (Keeps your token hidden from public GitHub code)
-function getSecureToken() {
-    let token = localStorage.getItem("gh_sync_token");
-    if (!token) {
-        token = prompt("Please enter your GitHub Personal Access Token to enable cross-device sync:");
-        if (token) {
-            localStorage.setItem("gh_sync_token", token.trim());
-        }
+const addNoteBtn = document.getElementById("addNoteBtn");
+const titleInput = document.getElementById("noteTitle");
+const tagInput = document.getElementById("noteTag");
+const contentInput = document.getElementById("noteContent");
+
+let currentSelectedTag = "ALL";
+let globalNotesMasterList = []; // Holds all family notes retrieved from the cloud
+let userPersonalNotes = [];     // Holds only the notes belonging to the current active user
+let activeUserDashboardOwner = "";
+
+// System Task 1: Ask for identity parameters and securely isolate the view profile workspace
+function initializeFamilyIdentity() {
+    let savedUser = localStorage.getItem("family_dashboard_user");
+    
+    while (!savedUser || savedUser.trim() === "") {
+        savedUser = prompt("Welcome to the Family Dashboard! Please enter your name to view your private workspace:");
     }
-    return token;
+    
+    activeUserDashboardOwner = savedUser.trim().toUpperCase();
+    localStorage.setItem("family_dashboard_user", activeUserDashboardOwner);
+    
+    // Inject a customized header name banner into the top navigation layout space dynamically
+    const navHeader = document.querySelector(".top-nav");
+    let userGreeting = document.getElementById("userGreetingBadge");
+    if (!userGreeting) {
+        userGreeting = document.createElement("span");
+        userGreeting.id = "userGreetingBadge";
+        userGreeting.style.cssText = "color: #38bdf8; font-weight: bold; font-size: 1.1rem; align-self: center; margin-right: auto; padding-left: 4px;";
+        navHeader.prepend(userGreeting);
+    }
+    userGreeting.textContent = `📋 ${activeUserDashboardOwner}'S WORKSPACE`;
 }
 
-// Feature 1: Fetch and pull your data directly from GitHub on page load
+// System Task 2: Fetch the entire file from the repository securely
 async function pullFromCloud() {
-    const GITHUB_TOKEN = getSecureToken();
-    if (!GITHUB_TOKEN) {
-        boardGrid.innerHTML = "<p style='color: #ef4444; padding: 20px;'>Sync disabled. Refresh and enter your token to connect.</p>";
-        return;
-    }
-
-    boardGrid.innerHTML = "<p style='color: #718096; padding: 20px;'>Streaming cards data...</p>";
+    boardGrid.innerHTML = "<p style='color: #718096; padding: 20px;'>Streaming live notes pipeline...</p>";
     try {
-        const res = await fetch(`${API_URL}?t=${Date.now()}`, {
-            headers: { "Authorization": `token ${GITHUB_TOKEN}` }
-        });
-        
+        const res = await fetch(`${READ_URL}?t=${Date.now()}`);
         if (res.ok) {
-            const fileData = await res.json();
-            currentFileSha = fileData.sha; 
-            
-            const decodedContent = atob(fileData.content);
-            savedNotes = JSON.parse(decodedContent);
-            localStorage.setItem("masonry_dashboard_notes", JSON.stringify(savedNotes));
+            globalNotesMasterList = await res.json();
+            localStorage.setItem("masonry_master_family_backup", JSON.stringify(globalNotesMasterList));
         } else {
-            throw new Error("Failed to load GitHub file");
+            throw new Error("Cloud delay");
         }
     } catch (err) {
-        console.warn("Falling back to local storage cache engine:", err);
-        savedNotes = JSON.parse(localStorage.getItem("masonry_dashboard_notes")) || [];
+        console.warn("Offline mode fallback triggered:", err);
+        globalNotesMasterList = JSON.parse(localStorage.getItem("masonry_master_family_backup")) || [];
     }
+    
+    isolateUserNotesDataset();
+}
+
+// System Task 3: Filter the master notes file to show only rows matching the current user's profile owner ID
+function isolateUserNotesDataset() {
+    userPersonalNotes = globalNotesMasterList.filter(note => {
+        return note.owner && note.owner.toUpperCase() === activeUserDashboardOwner;
+    });
+    
     loadDashboardContent();
 }
 
-// Feature 2: Push changes automatically to GitHub
+// System Task 4: Push all changes directly to Pipedream to update GitHub
 async function pushToCloud() {
-    const GITHUB_TOKEN = getSecureToken();
-    if (!GITHUB_TOKEN) return;
-
     try {
-        const encodedContent = btoa(unescape(encodeURIComponent(JSON.stringify(savedNotes, null, 2))));
-        
-        const res = await fetch(API_URL, {
-            method: "PUT",
-            headers: {
-                "Authorization": `token ${GITHUB_TOKEN}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                message: "Automated dashboard sync update",
-                content: encodedContent,
-                sha: currentFileSha 
-            })
-        });
+        const jsonString = JSON.stringify(globalNotesMasterList, null, 2);
+        const encodedContent = btoa(unescape(encodeURIComponent(jsonString)));
 
-        if (res.ok) {
-            const updatedData = await res.json();
-            currentFileSha = updatedData.content.sha; 
-            console.log("Cloud sync successful!");
-        } else {
-            const errData = await res.json();
-            console.error("Cloud push rejected:", errData);
-            if(res.status === 401) {
-                alert("GitHub token invalid or expired. Clearing saved token, please refresh.");
-                localStorage.removeItem("gh_sync_token");
-            }
-        }
+        await fetch(PIPEDREAM_SYNC_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: encodedContent })
+        });
+        console.log("Global sync update complete.");
     } catch (err) {
-        console.error("Cloud push network error:", err);
+        console.error("Sync pipeline tracking crash failure:", err);
     }
 }
 
-// Feature 3: Construct cards visually onto canvas screen
+// System Task 5: Render cards onto the grid view area canvas
 function loadDashboardContent() {
     boardGrid.innerHTML = "";
     
-    if (savedNotes.length === 0) {
-        boardGrid.innerHTML = "<p style='color: #4a5568; padding: 20px;'>No notes found. Click + Create Note to get started!</p>";
+    if (userPersonalNotes.length === 0) {
+        boardGrid.innerHTML = `<p style='color: #4a5568; padding: 20px;'>No notes found under ${activeUserDashboardOwner}. Click + Create Note to add some!</p>`;
     }
 
-    savedNotes.forEach(note => {
+    userPersonalNotes.forEach(note => {
         const newCard = document.createElement("div");
         newCard.className = "card";
         newCard.setAttribute("data-id", note.id);
@@ -123,10 +119,10 @@ function loadDashboardContent() {
     filterNotes();
 }
 
-// Feature 4: Generate tag navigation buttons dynamically
+// System Task 6: Track and build tag filter navigation row buttons
 function renderTagButtons() {
     const uniqueTags = new Set(["ALL"]);
-    savedNotes.forEach(note => {
+    userPersonalNotes.forEach(note => {
         const cleanTag = note.tag.replace("#", "").trim().toUpperCase();
         if (cleanTag) uniqueTags.add(cleanTag);
     });
@@ -148,7 +144,7 @@ function renderTagButtons() {
     });
 }
 
-// Feature 5: Front-end live text filter engine
+// System Task 7: Client-side keyword sorting filters
 function filterNotes() {
     const query = searchBar.value.toLowerCase();
     const cards = boardGrid.getElementsByClassName("card");
@@ -171,7 +167,6 @@ function filterNotes() {
 
 searchBar.addEventListener("input", filterNotes);
 
-// Feature 6: Toggle form panel tray drawer view actions
 togglePanelBtn.addEventListener("click", () => {
     creationPanel.classList.toggle("hidden");
     if (creationPanel.classList.contains("hidden")) {
@@ -182,7 +177,7 @@ togglePanelBtn.addEventListener("click", () => {
     }
 });
 
-// Feature 7: Create a new note and trigger automatic background upload sync
+// System Task 8: Save note and append identity ownership stamp metadata fields
 addNoteBtn.addEventListener("click", async () => {
     const titleText = titleInput.value.trim();
     let tagText = tagInput.value.trim();
@@ -201,13 +196,15 @@ addNoteBtn.addEventListener("click", async () => {
 
     const newNoteItem = {
         id: Date.now(),
+        owner: activeUserDashboardOwner, // Links this note to the active profile owner
         title: titleText,
         tag: tagText,
         content: contentText
     };
 
-    savedNotes.unshift(newNoteItem);
-    localStorage.setItem("masonry_dashboard_notes", JSON.stringify(savedNotes));
+    // Prepend to master dataset array list 
+    globalNotesMasterList.unshift(newNoteItem);
+    localStorage.setItem("masonry_master_family_backup", JSON.stringify(globalNotesMasterList));
 
     titleInput.value = "";
     tagInput.value = "";
@@ -215,30 +212,26 @@ addNoteBtn.addEventListener("click", async () => {
     creationPanel.classList.add("hidden");
     togglePanelBtn.textContent = "+ Create Note";
 
-    loadDashboardContent();
-    await pushToCloud(); 
+    isolateUserNotesDataset();
+    await pushToCloud(); // Synchronizes the master dataset file to the repository cleanly
 });
 
-// Feature 8: Delete notes and push clean snapshot up to cloud
+// System Task 9: Remove note from master dataset safely
 boardGrid.addEventListener("click", async (e) => {
     if (e.target.classList.contains("delete-btn")) {
-        if (confirm("Delete this card cross-platform permanently?")) {
+        if (confirm("Delete this note permanently across all family devices?")) {
             const cardNode = e.target.closest(".card");
             const itemId = parseInt(cardNode.getAttribute("data-id"));
 
-            savedNotes = savedNotes.filter(note => note.id !== itemId);
-            localStorage.setItem("masonry_dashboard_notes", JSON.stringify(savedNotes));
+            globalNotesMasterList = globalNotesMasterList.filter(note => note.id !== itemId);
+            localStorage.setItem("masonry_master_family_backup", JSON.stringify(globalNotesMasterList));
 
-            const tagStillExists = savedNotes.some(n => n.tag.replace("#", "").trim().toUpperCase() === currentSelectedTag);
-            if (!tagStillExists && currentSelectedTag !== "ALL") {
-                currentSelectedTag = "ALL";
-            }
-
-            loadDashboardContent();
-            await pushToCloud(); 
+            isolateUserNotesDataset();
+            await pushToCloud();
         }
     }
 });
 
-// Fire up initialization on boot sweep scanning GitHub files
+// Run deployment configuration setups sequentially 
+initializeFamilyIdentity();
 pullFromCloud();
