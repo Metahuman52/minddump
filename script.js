@@ -1,9 +1,10 @@
-// CONFIGURATION: Type your exact GitHub path strings below
+// CONFIGURATION: Type your exact GitHub path details below
 const GITHUB_USERNAME = "Metahuman52";
 const REPO_NAME = "minddump";
+const FILE_PATH = "data.json"; 
 
-// Automatically configures the global raw data pipeline link
-const DATA_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/data.json`;
+// API URL used for changing repository contents securely
+const API_URL = `https://github.com{GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}`;
 
 const searchBar = document.getElementById("searchBar");
 const boardGrid = document.getElementById("boardGrid");
@@ -19,27 +20,90 @@ const contentInput = document.getElementById("noteContent");
 
 let currentSelectedTag = "ALL";
 let savedNotes = [];
+let currentFileSha = ""; 
 
-// Feature 1: Pull centralized data from your GitHub source file
+// Dynamic Token Vault System (Keeps your token hidden from public GitHub code)
+function getSecureToken() {
+    let token = localStorage.getItem("gh_sync_token");
+    if (!token) {
+        token = prompt("Please enter your GitHub Personal Access Token to enable cross-device sync:");
+        if (token) {
+            localStorage.setItem("gh_sync_token", token.trim());
+        }
+    }
+    return token;
+}
+
+// Feature 1: Fetch and pull your data directly from GitHub on page load
 async function pullFromCloud() {
+    const GITHUB_TOKEN = getSecureToken();
+    if (!GITHUB_TOKEN) {
+        boardGrid.innerHTML = "<p style='color: #ef4444; padding: 20px;'>Sync disabled. Refresh and enter your token to connect.</p>";
+        return;
+    }
+
     boardGrid.innerHTML = "<p style='color: #718096; padding: 20px;'>Streaming cards data...</p>";
     try {
-        // Cache busting URL parameters bypass browser proxy delay freezes
-        const res = await fetch(`${DATA_URL}?t=${Date.now()}`);
+        const res = await fetch(`${API_URL}?t=${Date.now()}`, {
+            headers: { "Authorization": `token ${GITHUB_TOKEN}` }
+        });
+        
         if (res.ok) {
-            savedNotes = await res.json();
+            const fileData = await res.json();
+            currentFileSha = fileData.sha; 
+            
+            const decodedContent = atob(fileData.content);
+            savedNotes = JSON.parse(decodedContent);
             localStorage.setItem("masonry_dashboard_notes", JSON.stringify(savedNotes));
         } else {
-            throw new Error("Server response fault");
+            throw new Error("Failed to load GitHub file");
         }
     } catch (err) {
-        console.warn("Falling back to local storage engine fallback cache:", err);
+        console.warn("Falling back to local storage cache engine:", err);
         savedNotes = JSON.parse(localStorage.getItem("masonry_dashboard_notes")) || [];
     }
     loadDashboardContent();
 }
 
-// Feature 2: Construct cards visually onto canvas screen
+// Feature 2: Push changes automatically to GitHub
+async function pushToCloud() {
+    const GITHUB_TOKEN = getSecureToken();
+    if (!GITHUB_TOKEN) return;
+
+    try {
+        const encodedContent = btoa(unescape(encodeURIComponent(JSON.stringify(savedNotes, null, 2))));
+        
+        const res = await fetch(API_URL, {
+            method: "PUT",
+            headers: {
+                "Authorization": `token ${GITHUB_TOKEN}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                message: "Automated dashboard sync update",
+                content: encodedContent,
+                sha: currentFileSha 
+            })
+        });
+
+        if (res.ok) {
+            const updatedData = await res.json();
+            currentFileSha = updatedData.content.sha; 
+            console.log("Cloud sync successful!");
+        } else {
+            const errData = await res.json();
+            console.error("Cloud push rejected:", errData);
+            if(res.status === 401) {
+                alert("GitHub token invalid or expired. Clearing saved token, please refresh.");
+                localStorage.removeItem("gh_sync_token");
+            }
+        }
+    } catch (err) {
+        console.error("Cloud push network error:", err);
+    }
+}
+
+// Feature 3: Construct cards visually onto canvas screen
 function loadDashboardContent() {
     boardGrid.innerHTML = "";
     
@@ -69,7 +133,7 @@ function loadDashboardContent() {
     filterNotes();
 }
 
-// Feature 3: Generate tag pills navigations
+// Feature 4: Generate tag navigation buttons dynamically
 function renderTagButtons() {
     const uniqueTags = new Set(["ALL"]);
     savedNotes.forEach(note => {
@@ -94,7 +158,7 @@ function renderTagButtons() {
     });
 }
 
-// Feature 4: Compound sorting logic search algorithms
+// Feature 5: Front-end live text filter engine
 function filterNotes() {
     const query = searchBar.value.toLowerCase();
     const cards = boardGrid.getElementsByClassName("card");
@@ -117,7 +181,7 @@ function filterNotes() {
 
 searchBar.addEventListener("input", filterNotes);
 
-// Feature 5: Toggle UI drop layout panel
+// Feature 6: Toggle form panel tray drawer view actions
 togglePanelBtn.addEventListener("click", () => {
     creationPanel.classList.toggle("hidden");
     if (creationPanel.classList.contains("hidden")) {
@@ -128,8 +192,8 @@ togglePanelBtn.addEventListener("click", () => {
     }
 });
 
-// Feature 6: Add card item to array and download a copy
-addNoteBtn.addEventListener("click", () => {
+// Feature 7: Create a new note and trigger automatic background upload sync
+addNoteBtn.addEventListener("click", async () => {
     const titleText = titleInput.value.trim();
     let tagText = tagInput.value.trim();
     const contentText = contentInput.value.trim();
@@ -162,13 +226,13 @@ addNoteBtn.addEventListener("click", () => {
     togglePanelBtn.textContent = "+ Create Note";
 
     loadDashboardContent();
-    triggerFileDownload();
+    await pushToCloud(); 
 });
 
-// Feature 7: Delete card node and call tracking layout update functions
-boardGrid.addEventListener("click", (e) => {
+// Feature 8: Delete notes and push clean snapshot up to cloud
+boardGrid.addEventListener("click", async (e) => {
     if (e.target.classList.contains("delete-btn")) {
-        if (confirm("Delete this card cross platform?")) {
+        if (confirm("Delete this card cross-platform permanently?")) {
             const cardNode = e.target.closest(".card");
             const itemId = parseInt(cardNode.getAttribute("data-id"));
 
@@ -181,21 +245,10 @@ boardGrid.addEventListener("click", (e) => {
             }
 
             loadDashboardContent();
-            triggerFileDownload();
+            await pushToCloud(); 
         }
     }
 });
 
-// Feature 8: Automatic Backup Exporter
-function triggerFileDownload() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedNotes, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", "data.json");
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-}
-
-// Bootstrap Initialization
+// Fire up initialization on boot sweep scanning GitHub files
 pullFromCloud();
