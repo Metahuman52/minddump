@@ -17,19 +17,23 @@ const contentInput = document.getElementById("noteContent");
 let currentSelectedTag = "ALL";
 let savedNotes = [];
 
-// Feature 1: Push local notes snapshot to online cloud bucket storage silently
+// Feature 1: Push local notes snapshot to online cloud bucket storage securely using Master Key
 async function pushToCloud() {
     try {
-        await fetch(`https://jsonbin.io{BIN_ID}`, {
+        const response = await fetch(`https://jsonbin.io{BIN_ID}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
-                "X-Master-Key": API_KEY
+                "X-Master-Key": API_KEY  // Authorizes your device to write to your private bin
             },
             body: JSON.stringify({ notes: savedNotes })
         });
+        
+        if (!response.ok) {
+            console.error("Cloud upload rejected by server status:", response.status);
+        }
     } catch (err) {
-        console.error("Cloud upload error:", err);
+        console.error("Cloud upload connection failure:", err);
     }
 }
 
@@ -39,11 +43,12 @@ async function pullFromCloud() {
     try {
         const res = await fetch(`https://jsonbin.io{BIN_ID}/latest`, {
             headers: { 
-                "X-Master-Key": API_KEY  // This authenticates your device to read your private bin
+                "X-Master-Key": API_KEY  // Authorizes your device to read your private bin
             }
         });
         const data = await res.json();
         
+        // JSONBin wraps payloads inside a '.record' wrapper block
         if (data.record && data.record.notes) {
             savedNotes = data.record.notes;
             localStorage.setItem("masonry_dashboard_notes", JSON.stringify(savedNotes));
@@ -54,7 +59,6 @@ async function pullFromCloud() {
     }
     loadDashboardContent();
 }
-
 
 // Feature 3: Construct cards array visually onto screen canvas
 function loadDashboardContent() {
@@ -179,7 +183,7 @@ addNoteBtn.addEventListener("click", () => {
     togglePanelBtn.textContent = "+ Create Note";
 
     loadDashboardContent();
-    pushToCloud(); // Synchronizes your remote bucket silently
+    pushToCloud(); 
 });
 
 // Feature 8: Delete notes cleanly across local layout cache and cloud indexes
