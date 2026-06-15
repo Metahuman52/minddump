@@ -33,12 +33,14 @@ async function pushToCloud() {
     }
 }
 
-// Feature 2: Pull cloud updates down onto device
+// Feature 2: Pull cloud updates down onto device securely using Master Key
 async function pullFromCloud() {
     boardGrid.innerHTML = "<p style='color: #718096; padding: 20px;'>Syncing across devices...</p>";
     try {
         const res = await fetch(`https://jsonbin.io{BIN_ID}/latest`, {
-            headers: { "X-Master-Key": API_KEY }
+            headers: { 
+                "X-Master-Key": API_KEY  // This authenticates your device to read your private bin
+            }
         });
         const data = await res.json();
         
@@ -52,6 +54,7 @@ async function pullFromCloud() {
     }
     loadDashboardContent();
 }
+
 
 // Feature 3: Construct cards array visually onto screen canvas
 function loadDashboardContent() {
