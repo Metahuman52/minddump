@@ -1,210 +1,204 @@
-// CONFIGURATION: Paste your unique Supabase credential details strings inside the quotes below
-const SUPABASE_URL = "https://vulywlemuadbywitzpik.supabase.co/rest/v1/";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1bHl3bGVtdWFkYnl3aXR6cGlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0ODYzNTgsImV4cCI6MjA5NzA2MjM1OH0.LdICYSCv3pjS0gZp1AwuXtf_MJ68zW_eFzOlcddiA7o";
+// CONFIGURATION: Paste your unique credentials from your jsonbin dashboard profiles
+const API_KEY = "$2a$10$gdF5GL/vXNb5KkIq2.jeaegny6qFLHAZI8ukKyjkgQ2XqjCxQE51u";
+const BIN_ID = "6a2f862dda38895dfec18a66";
 
-// Initialize the secure cloud pipeline engine client instance
-const supabase = libraryClientSupabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const searchBar = document.getElementById("searchBar");
+const boardGrid = document.getElementById("boardGrid");
+const tagBar = document.getElementById("tagBar");
 
-document.addEventListener("DOMContentLoaded", () => {
-    const searchBar = document.getElementById("searchBar");
-    const boardGrid = document.getElementById("boardGrid");
-    const tagBar = document.getElementById("tagBar");
-    
-    const togglePanelBtn = document.getElementById("togglePanelBtn");
-    const creationPanel = document.getElementById("creationPanel");
-    
-    const addNoteBtn = document.getElementById("addNoteBtn");
-    const titleInput = document.getElementById("noteTitle");
-    const tagInput = document.getElementById("noteTag");
-    const contentInput = document.getElementById("noteContent");
+const togglePanelBtn = document.getElementById("togglePanelBtn");
+const creationPanel = document.getElementById("creationPanel");
 
-    let currentSelectedTag = "ALL";
+const addNoteBtn = document.getElementById("addNoteBtn");
+const titleInput = document.getElementById("noteTitle");
+const tagInput = document.getElementById("noteTag");
+const contentInput = document.getElementById("noteContent");
 
-    // Feature 1: Stream and Download Notes directly from the Cloud database server
-    async function fetchCloudNotes() {
-        boardGrid.innerHTML = "<p style='color: #718096; padding: 20px;'>Syncing data with cloud database...</p>";
-        
-        let { data: notes, error } = await supabase
-            .from('notes')
-            .select('*')
-            .order('created_at', { ascending: false });
+let currentSelectedTag = "ALL";
+let savedNotes = [];
 
-        if (error) {
-            console.error("Cloud download fault error:", error);
-            boardGrid.innerHTML = "<p style='color: #ef4444; padding: 20px;'>Sync error. Check console configuration logs.</p>";
-            return;
-        }
-
-        boardGrid.innerHTML = ""; // Clear loader text
-
-        if (notes.length === 0) {
-            boardGrid.innerHTML = "<p style='color: #4a5568; padding: 20px;'>No notes found. Click + Create Note to get started!</p>";
-        }
-
-        notes.forEach(note => {
-            renderCardToDOM(note.id, note.title, note.tag, note.content);
+// Feature 1: Push local notes snapshot to online cloud bucket storage silently
+async function pushToCloud() {
+    try {
+        await fetch(`https://jsonbin.io{BIN_ID}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Master-Key": API_KEY
+            },
+            body: JSON.stringify({ notes: savedNotes })
         });
+    } catch (err) {
+        console.error("Cloud upload error:", err);
+    }
+}
 
-        renderTagButtons();
-        filterNotes();
+// Feature 2: Pull cloud updates down onto device
+async function pullFromCloud() {
+    boardGrid.innerHTML = "<p style='color: #718096; padding: 20px;'>Syncing across devices...</p>";
+    try {
+        const res = await fetch(`https://jsonbin.io{BIN_ID}/latest`, {
+            headers: { "X-Master-Key": API_KEY }
+        });
+        const data = await res.json();
+        
+        if (data.record && data.record.notes) {
+            savedNotes = data.record.notes;
+            localStorage.setItem("masonry_dashboard_notes", JSON.stringify(savedNotes));
+        }
+    } catch (err) {
+        console.error("Cloud download fault, falling back to local file dataset:", err);
+        savedNotes = JSON.parse(localStorage.getItem("masonry_dashboard_notes")) || [];
+    }
+    loadDashboardContent();
+}
+
+// Feature 3: Construct cards array visually onto screen canvas
+function loadDashboardContent() {
+    boardGrid.innerHTML = "";
+    
+    if (savedNotes.length === 0) {
+        boardGrid.innerHTML = "<p style='color: #4a5568; padding: 20px;'>No notes found. Click + Create Note to get started!</p>";
     }
 
-    // Helper Utility: Paint card object elements onto the DOM workspace board canvas
-    function renderCardToDOM(id, title, tag, content) {
+    savedNotes.forEach(note => {
         const newCard = document.createElement("div");
         newCard.className = "card";
-        newCard.setAttribute("data-id", id); // Anchor reference index for cloud tracking actions
+        newCard.setAttribute("data-id", note.id);
         newCard.innerHTML = `
             <div class="card-header">
-                <span class="tag-label">${tag.toUpperCase()}</span>
+                <span class="tag-label">${note.tag.toUpperCase()}</span>
                 <span class="header-right">
                     <button class="delete-btn" title="Delete Note">🗑️</button>
                 </span>
             </div>
-            <h3>${title}</h3>
-            <span class="card-tag">${tag.toUpperCase()}</span>
-            <p>${content}</p>
+            <h3>${note.title}</h3>
+            <span class="card-tag">${note.tag.toUpperCase()}</span>
+            <p>${note.content}</p>
         `;
         boardGrid.appendChild(newCard);
-    }
+    });
 
-    // Feature 2: Generate Tag Buttons list dynamically
-    function renderTagButtons() {
-        const cards = boardGrid.getElementsByClassName("card");
-        const uniqueTags = new Set(["ALL"]);
+    renderTagButtons();
+    filterNotes();
+}
 
-        Array.from(cards).forEach(card => {
-            const tagElement = card.querySelector(".card-tag");
-            if (tagElement) {
-                const cleanTagText = tagElement.textContent.replace("#", "").trim().toUpperCase();
-                if (cleanTagText) uniqueTags.add(cleanTagText);
-            }
+// Feature 4: Parse tags array to build the top navigation pill filter row
+function renderTagButtons() {
+    const uniqueTags = new Set(["ALL"]);
+    savedNotes.forEach(note => {
+        const cleanTag = note.tag.replace("#", "").trim().toUpperCase();
+        if (cleanTag) uniqueTags.add(cleanTag);
+    });
+
+    tagBar.innerHTML = "";
+
+    uniqueTags.forEach(tag => {
+        const btn = document.createElement("button");
+        btn.className = `tag-btn ${currentSelectedTag === tag ? "active" : ""}`;
+        btn.textContent = tag === "ALL" ? "#ALL" : `#${tag}`;
+        
+        btn.addEventListener("click", () => {
+            currentSelectedTag = tag;
+            document.querySelectorAll(".tag-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            filterNotes();
         });
+        tagBar.appendChild(btn);
+    });
+}
 
-        tagBar.innerHTML = "";
+// Feature 5: Front-end text filtering algorithm
+function filterNotes() {
+    const query = searchBar.value.toLowerCase();
+    const cards = boardGrid.getElementsByClassName("card");
 
-        uniqueTags.forEach(tag => {
-            const btn = document.createElement("button");
-            btn.className = `tag-btn ${currentSelectedTag === tag ? "active" : ""}`;
-            btn.textContent = tag === "ALL" ? "#ALL" : `#${tag}`;
-            
-            btn.addEventListener("click", () => {
-                currentSelectedTag = tag;
-                document.querySelectorAll(".tag-btn").forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
-                filterNotes();
-            });
-            tagBar.appendChild(btn);
-        });
-    }
+    Array.from(cards).forEach(card => {
+        const text = card.innerText.toLowerCase();
+        const tagElement = card.querySelector(".card-tag");
+        const cardTag = tagElement ? tagElement.textContent.replace("#", "").trim().toUpperCase() : "";
 
-    // Feature 3: Master Compound Search Filter Engine
-    function filterNotes() {
-        const searchQuery = searchBar.value.toLowerCase();
-        const cards = boardGrid.getElementsByClassName("card");
+        const matchesSearch = text.includes(query);
+        const matchesTag = (currentSelectedTag === "ALL" || cardTag === currentSelectedTag);
 
-        Array.from(cards).forEach(card => {
-            const cardText = card.innerText.toLowerCase();
-            const tagElement = card.querySelector(".card-tag");
-            const cardTagText = tagElement ? tagElement.textContent.replace("#", "").trim().toUpperCase() : "";
-
-            const matchesSearch = cardText.includes(searchQuery);
-            const matchesTag = (currentSelectedTag === "ALL" || cardTagText === currentSelectedTag);
-
-            if (matchesSearch && matchesTag) {
-                card.classList.remove("hidden");
-            } else {
-                card.classList.add("hidden");
-            }
-        });
-    }
-
-    searchBar.addEventListener("input", filterNotes);
-
-    // Feature 4: Toggle creation modal form drawer visibility
-    togglePanelBtn.addEventListener("click", () => {
-        creationPanel.classList.toggle("hidden");
-        if (creationPanel.classList.contains("hidden")) {
-            togglePanelBtn.textContent = "+ Create Note";
+        if (matchesSearch && matchesTag) {
+            card.classList.remove("hidden");
         } else {
-            togglePanelBtn.textContent = "✕ Close Panel";
-            titleInput.focus();
+            card.classList.add("hidden");
         }
     });
+}
 
-    // Feature 5: Create a new Note card item and save upload directly to Cloud Storage
-    addNoteBtn.addEventListener("click", async () => {
-        const titleText = titleInput.value.trim();
-        let tagText = tagInput.value.trim();
-        const contentText = contentInput.value.trim();
+searchBar.addEventListener("input", filterNotes);
 
-        if (!titleText || !contentText) {
-            alert("Please complete fields before saving!");
-            return;
-        }
-
-        if (tagText && !tagText.startsWith("#")) {
-            tagText = "#" + tagText;
-        } else if (!tagText) {
-            tagText = "#GENERAL";
-        }
-
-        // Send payload structure to cloud server engine instantly
-        const { error } = await supabase
-            .from('notes')
-            .insert([{ title: titleText, tag: tagText, content: contentText }]);
-
-        if (error) {
-            alert("Upload database fault: " + error.message);
-            return;
-        }
-
-        // Clear input layout state elements and hide menu box panel drawer
-        titleInput.value = "";
-        tagInput.value = "";
-        contentInput.value = "";
-        creationPanel.classList.add("hidden");
+// Feature 6: Toggle creation tray drop layout actions
+togglePanelBtn.addEventListener("click", () => {
+    creationPanel.classList.toggle("hidden");
+    if (creationPanel.classList.contains("hidden")) {
         togglePanelBtn.textContent = "+ Create Note";
-
-        // Pull down freshly updated dataset layout down onto screen board grid 
-        fetchCloudNotes();
-    });
-
-    // Feature 6: Delete card item execution across current browser viewport and cloud backup
-    boardGrid.addEventListener("click", async (e) => {
-        if (e.target.classList.contains("delete-btn")) {
-            const confirmed = confirm("Are you sure you want to delete this cloud backup note record permanently?");
-            if (confirmed) {
-                const targetCard = e.target.closest(".card");
-                const cardId = targetCard.getAttribute("data-id");
-
-                // Execute SQL line drop instruction remotely across data system tables
-                const { error } = await supabase
-                    .from('notes')
-                    .delete()
-                    .eq('id', cardId);
-
-                if (error) {
-                    alert("Delete task failed: " + error.message);
-                    return;
-                }
-
-                // Drop node element target safely out from front end view grid
-                targetCard.remove();
-                renderTagButtons();
-                
-                // Fallback tag evaluation logic check guard bounds safety tracking validation block
-                const activeTagStillExists = Array.from(boardGrid.querySelectorAll(".card-tag"))
-                    .some(t => t.textContent.replace("#", "").trim().toUpperCase() === currentSelectedTag);
-                
-                if (!activeTagStillExists && currentSelectedTag !== "ALL") {
-                    currentSelectedTag = "ALL";
-                }
-                filterNotes();
-            }
-        }
-    });
-
-    // Run remote retrieval pipeline scan setup tasks right at launch initialization 
-    fetchCloudNotes();
+    } else {
+        togglePanelBtn.textContent = "✕ Close Panel";
+        titleInput.focus();
+    }
 });
+
+// Feature 7: Add notes and trigger background sync pipeline tasks
+addNoteBtn.addEventListener("click", () => {
+    const titleText = titleInput.value.trim();
+    let tagText = tagInput.value.trim();
+    const contentText = contentInput.value.trim();
+
+    if (!titleText || !contentText) {
+        alert("Please complete fields before saving!");
+        return;
+    }
+
+    if (tagText && !tagText.startsWith("#")) {
+        tagText = "#" + tagText;
+    } else if (!tagText) {
+        tagText = "#GENERAL";
+    }
+
+    const newNoteItem = {
+        id: Date.now(),
+        title: titleText,
+        tag: tagText,
+        content: contentText
+    };
+
+    savedNotes.unshift(newNoteItem);
+    localStorage.setItem("masonry_dashboard_notes", JSON.stringify(savedNotes));
+
+    titleInput.value = "";
+    tagInput.value = "";
+    contentInput.value = "";
+    creationPanel.classList.add("hidden");
+    togglePanelBtn.textContent = "+ Create Note";
+
+    loadDashboardContent();
+    pushToCloud(); // Synchronizes your remote bucket silently
+});
+
+// Feature 8: Delete notes cleanly across local layout cache and cloud indexes
+boardGrid.addEventListener("click", (e) => {
+    if (e.target.classList.contains("delete-btn")) {
+        if (confirm("Delete this card across all cloud devices?")) {
+            const cardNode = e.target.closest(".card");
+            const itemId = parseInt(cardNode.getAttribute("data-id"));
+
+            savedNotes = savedNotes.filter(note => note.id !== itemId);
+            localStorage.setItem("masonry_dashboard_notes", JSON.stringify(savedNotes));
+
+            const tagStillExists = savedNotes.some(n => n.tag.replace("#", "").trim().toUpperCase() === currentSelectedTag);
+            if (!tagStillExists && currentSelectedTag !== "ALL") {
+                currentSelectedTag = "ALL";
+            }
+
+            loadDashboardContent();
+            pushToCloud();
+        }
+    }
+});
+
+// Fire up initialization on boot sweep scanning cloud arrays
+pullFromCloud();

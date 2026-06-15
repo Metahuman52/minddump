@@ -3,66 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Masonry Dashboard</title>
+    <title>Cross-Device Workspace</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-        <!-- Top Navigation Interface -->
+    <!-- Top Navigation Interface Area -->
     <header class="top-nav">
         <div class="search-container">
             <span class="search-icon">🔍</span>
-            <input type="text" id="searchBar" placeholder="Search by text or tag..." autocomplete="off">
+            <input type="text" id="searchBar" placeholder="Search notes or tags..." autocomplete="off">
         </div>
         <button id="togglePanelBtn" class="action-trigger-btn">+ Create Note</button>
     </header>
 
-    <!-- Dynamic Tag Filter Bar Container -->
+    <!-- Dynamic Tag Filter Navigation Bar -->
     <div id="tagBar" class="tag-bar"></div>
 
-    <!-- Create Note Input Area (Hidden by default via CSS) -->
+    <!-- Create Note Form Panel Drawer -->
     <section class="creation-panel hidden" id="creationPanel">
         <div class="input-row">
-            <input type="text" id="noteTitle" placeholder="Title (e.g., Grocery List)">
+            <input type="text" id="noteTitle" placeholder="Title (e.g., Launch List)">
             <input type="text" id="noteTag" placeholder="Tag (e.g., #ACTION)">
         </div>
         <textarea id="noteContent" placeholder="Write your note contents here..."></textarea>
         <button id="addNoteBtn">Save Note</button>
     </section>
 
-    <!-- Main Board Workspace Grid -->
-    <main class="masonry-board" id="boardGrid">
-        
-        <!-- Pre-existing Default Card 1 -->
-        <div class="card pinned">
-            <div class="card-header">
-                <span class="status">📌 PINNED</span>
-                <span class="header-right">
-                    <span class="date">May 24</span>
-                    <button class="delete-btn" title="Delete Note">🗑️</button>
-                </span>
-            </div>
-            <h3>Launch List</h3>
-            <span class="card-tag">#LAUNCH</span>
-            <p>Get a new image for the first page of MindChuk. Create a demo page showing every feature.</p>
-        </div>
+    <!-- Core Masonry Grid Dashboard Workspace Board Canvas -->
+    <main class="masonry-board" id="boardGrid"></main>
 
-        <!-- Pre-existing Default Card 2 -->
-        <div class="card">
-            <div class="card-header">
-                <span class="tag-label">#MARKETING</span>
-                <span class="header-right">
-                    <span class="date">May 24</span>
-                    <button class="delete-btn" title="Delete Note">🗑️</button>
-                </span>
-            </div>
-            <h3>SMS Retrieval Feature</h3>
-            <span class="card-tag">#MARKETING</span>
-            <p>Text commands that pull up your notes via SMS reply. User texts GET groceries - MindChuk texts back notes tagged groceries.</p>
-        </div>
-
-    </main>
-
+    <!-- Standard, classic script loading structure -->
     <script src="script.js"></script>
 </body>
 </html>
